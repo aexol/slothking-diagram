@@ -1,13 +1,13 @@
 import * as React from 'react';
-let styles = require('./index.css');
-import { SpaceBarMenu, SpaceBarCategory } from './SpaceBarMenu';
+import * as styles from './style';
+import { SpaceBarMenu, SpaceBarCategory, SpaceBarAction } from './SpaceBarMenu';
 import { NodeType, NodeTypePartial } from './Node';
 import { Node } from './SimpleNode';
 import { GraphProps, GraphState, GraphInitialState, Action } from './GraphDefs';
 import { LinkWidget } from './Link';
 import { Port, PortType } from './Port';
 import { Props } from './Props';
-import { generateId, deepNodeUpdate } from './utils';
+import { generateId, deepNodeUpdate, updateClonedNodesNames } from './utils';
 import { renderLinks } from './render';
 
 export class Graph extends React.Component<GraphProps, GraphState> {
@@ -27,6 +27,36 @@ export class Graph extends React.Component<GraphProps, GraphState> {
     }
     return this.state.activePort;
   }
+  componentDidUpdate(prevProps: GraphProps, prevState: GraphState) {
+    if (prevState.nodes !== this.state.nodes || prevState.links !== this.state.links) {
+      this.serialize();
+    }
+    if (
+      prevState.selected !== this.state.selected &&
+      this.props.selectedNode !== this.state.selected
+    ) {
+      this.props.onNodeSelect(this.state.selected);
+    }
+  }
+  static getDerivedStateFromProps(nextProps: GraphProps, prevState: GraphState) {
+    if (
+      prevState.action === Action.Nothing &&
+      nextProps.selectedNode &&
+      nextProps.selectedNode !== prevState.selected
+    ) {
+      return {
+        selected: nextProps.selectedNode
+      };
+    }
+    if (prevState.loaded !== nextProps.loaded) {
+      return {
+        loaded: nextProps.loaded,
+        nodes: nextProps.loaded.nodes,
+        links: nextProps.loaded.links
+      };
+    }
+    return null;
+  }
   nodes = (nodes: Array<NodeType>): Array<NodeType> => {
     const processData = function*(data) {
       for (var n of data) {
@@ -42,13 +72,11 @@ export class Graph extends React.Component<GraphProps, GraphState> {
   deleteLinks = (id: string) => {
     let { nodes = [] } = this.nodes(this.state.nodes).find((n) => n.id === id);
     let deletedNodes = [id, ...this.nodes(nodes).map((n) => n.id)];
-    console.log(deletedNodes, this.state.links);
     const links = {
       links: this.state.links.filter(
         (l) => !deletedNodes.includes(l.from.nodeId) && !deletedNodes.includes(l.to.nodeId)
       )
     };
-    console.log(links);
     return links;
   };
   deleteNode = (id: string) => {
@@ -165,7 +193,7 @@ export class Graph extends React.Component<GraphProps, GraphState> {
       ...updateState
     });
   };
-  portDown = (x: number, y: number, portId: string, id: string) => {
+  portDown = (x: number, y: number, portId: string, id: string, output: boolean) => {
     this.setState({
       action: Action.ConnectPort,
       activePort: {
@@ -173,27 +201,37 @@ export class Graph extends React.Component<GraphProps, GraphState> {
         y,
         id,
         portId,
+        output,
         endX: x,
         endY: y
       }
     });
   };
-  portUp = (x: number, y: number, portId: string, id: string) => {
+  portUp = (x: number, y: number, portId: string, id: string, output: boolean) => {
     const { activePort } = this.state;
+    const ports = [
+      {
+        nodeId: activePort.id,
+        portId: activePort.portId
+      },
+      {
+        nodeId: id,
+        portId
+      }
+    ];
     if (activePort && activePort.portId !== portId) {
-      const { id: nodeId, portId: activePortId } = activePort;
+      if (activePort.output === output) {
+        this.reset();
+        return;
+      }
+      let from = activePort.output ? ports[0] : ports[1];
+      let to = activePort.output ? ports[1] : ports[0];
       this.reset({
         links: [
           ...this.state.links,
           {
-            from: {
-              nodeId,
-              portId: activePortId
-            },
-            to: {
-              nodeId: id,
-              portId
-            }
+            from,
+            to
           }
         ]
       });
@@ -236,10 +274,10 @@ export class Graph extends React.Component<GraphProps, GraphState> {
         name={i.name}
         key={i.id}
         portDown={(x, y) => {
-          this.portDown(x, y, i.id, node.id);
+          this.portDown(x, y, i.id, node.id, i.output);
         }}
         portUp={(x, y) => {
-          this.portUp(x, y, i.id, node.id);
+          this.portUp(x, y, i.id, node.id, i.output);
         }}
         portPosition={(x, y) => {
           this.updatePortPositions(x, y, i.id, node.id, output);
@@ -310,34 +348,33 @@ export class Graph extends React.Component<GraphProps, GraphState> {
   };
   spaceBarCategories = (): Array<SpaceBarCategory> => {
     const { categories } = this.props;
-    let spaceBarCategories = categories.map((c) => ({
-      ...c,
-      items: c.items.map((i) => ({
-        name: i.name,
-        action: () => {
-          this.addNode({
-            ...i,
-            id: generateId(),
-            inputs: i.inputs.map((input) => ({ ...input, id: generateId() })),
-            outputs: i.outputs.map((output) => ({ ...output, id: generateId() }))
-          });
-        }
-      }))
-    }));
+    let spaceBarCategories = categories.map((c) => {
+      if (c.type === SpaceBarAction.AddNode) {
+        return {
+          ...c,
+          items: c.items.map((i) => ({
+            name: i.name,
+            action: () => {
+              this.addNode({
+                ...i,
+                id: generateId(),
+                inputs: i.inputs.map((input) => ({ ...input, id: generateId() })),
+                outputs: i.outputs.map((output) => ({ ...output, id: generateId() }))
+              });
+            }
+          }))
+        };
+      }
+      if (c.type === SpaceBarAction.Action) {
+        return {
+          ...c
+        };
+      }
+    });
     spaceBarCategories = [
       {
-        name: 'serialize',
-        items: [
-          {
-            name: 'save',
-            action: () => {
-              this.serialize();
-            }
-          }
-        ]
-      },
-      {
         name: 'node',
+        type: SpaceBarAction.Action,
         items: this.state.selected
           ? [
               {
@@ -352,6 +389,14 @@ export class Graph extends React.Component<GraphProps, GraphState> {
                   this.setState((state) => ({
                     ...this.deleteNode(state.selected),
                     selected: null
+                  }));
+                }
+              },
+              {
+                name: 'unlink',
+                action: () => {
+                  this.setState((state) => ({
+                    ...this.deleteLinks(state.selected)
                   }));
                 }
               },
@@ -382,7 +427,15 @@ export class Graph extends React.Component<GraphProps, GraphState> {
   serialize = () => {
     const { serialize } = this.props;
     if (serialize) {
-      serialize(this.state.nodes, this.state.links);
+      serialize(this.nodes(this.state.nodes), this.state.links);
+    }
+  };
+  load = () => {
+    const { load } = this.props;
+    if (load) {
+      this.setState({
+        nodes: load()
+      });
     }
   };
   render() {
@@ -447,9 +500,14 @@ export class Graph extends React.Component<GraphProps, GraphState> {
                 }}
               />
             )}
-            {renderLinks(links, nodes, this.oX, this.oY)}
+            {renderLinks(links, nodes, this.oX, this.oY, selectedNode)}
           </svg>
         </div>
+        {nodes.length === 0 && (
+          <div className={styles.HelperScreen}>
+            <div className={styles.HelperPhrase}>Press and hold spacebar to add new nodes</div>
+          </div>
+        )}
         {this.state.spacePressed && (
           <SpaceBarMenu
             x={this.state.spaceX}
@@ -464,6 +522,16 @@ export class Graph extends React.Component<GraphProps, GraphState> {
               this.setState((state) => {
                 return this.updateNode(state.nodes, selected.id, selected);
               });
+              let clones = this.nodes(this.state.nodes).filter((n) => n.clone === selectedNode);
+              if (clones.length) {
+                this.setState((state) => {
+                  return updateClonedNodesNames({
+                    nodes: state.nodes,
+                    ids: clones.map((c) => c.id),
+                    name: selected.name
+                  });
+                });
+              }
             }}
             canExpand={!!this.state.selected}
             canShrink={!this.state.selected && this.state.path.length > 1}

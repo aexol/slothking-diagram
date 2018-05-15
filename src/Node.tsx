@@ -1,8 +1,7 @@
-let styles = require('./index.css');
 import * as React from 'react';
 import * as classnames from 'classnames';
 import { PortType, Port } from './Port';
-
+import * as styles from './style';
 export type NodeType = {
   id?: string;
   x?: number;
@@ -14,13 +13,14 @@ export type NodeType = {
   inputs: Array<PortType>;
   outputs: Array<PortType>;
   nodes?: Array<NodeType>;
+  clone?: string;
 };
 export type NodeTypePartial = { [P in keyof NodeType]?: NodeType[P] };
 export type NodeActions = {
   nodeDown: (id: string, x: number, y: number) => void;
   nodeUp: (id: string) => void;
-  portUp: (x: number, y: number, portId: string, id: string) => void;
-  portDown: (x: number, y: number, portId: string, id: string) => void;
+  portUp: (x: number, y: number, portId: string, id: string, output: boolean) => void;
+  portDown: (x: number, y: number, portId: string, id: string, output: boolean) => void;
   portPosition: (x: number, y: number, portId: string, id: string, output: boolean) => void;
   addPort: (port: PortType) => void;
 };
@@ -75,11 +75,11 @@ export class Node extends React.Component<NodeType & NodeActions, NodeState> {
         <div className={styles.DependencyNodePorts}>
           {inputs.map((i) => (
             <Port
-              portUp={(x, y) => {
-                portUp(x, y, i.id, id);
+              portUp={(x, y, output) => {
+                portUp(x, y, i.id, id, output);
               }}
-              portDown={(x, y) => {
-                portDown(x, y, i.id, id);
+              portDown={(x, y, output) => {
+                portDown(x, y, i.id, id, output);
               }}
               portPosition={(x, y, output) => {
                 portPosition(x, y, i.id, id, output);
@@ -113,11 +113,11 @@ export class Node extends React.Component<NodeType & NodeActions, NodeState> {
           )}
           {outputs.map((i) => (
             <Port
-              portUp={(x, y) => {
-                portUp(x, y, i.id, id);
+              portUp={(x, y, output) => {
+                portUp(x, y, i.id, id, output);
               }}
-              portDown={(x, y) => {
-                portDown(x, y, i.id, id);
+              portDown={(x, y, output) => {
+                portDown(x, y, i.id, id, output);
               }}
               portPosition={(x, y, output) => {
                 portPosition(x, y, i.id, id, output);

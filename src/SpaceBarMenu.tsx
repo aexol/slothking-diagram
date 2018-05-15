@@ -1,5 +1,5 @@
 import * as React from 'react';
-let styles = require('./SpaceBarMenu.css');
+import * as styles from './style/SpaceBarMenu';
 export type Item = {
   name: string;
   action: Function;
@@ -19,6 +19,10 @@ export type SpaceBarState = {
   category?: string;
   menuWidth: number;
 };
+export enum SpaceBarAction {
+  AddNode,
+  Action
+}
 const Categories = ({ categories, category, onMouseOver, top, style, refFunction }) => (
   <div
     className={styles.SpaceBarCategories}

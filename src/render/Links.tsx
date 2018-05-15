@@ -5,9 +5,27 @@ export const renderLinks = (
   links: Array<LinkType>,
   nodes: Array<NodeType>,
   oX: (x: number) => number,
-  oY: (y: number) => number
-) =>
-  links.map((l: LinkType) => {
+  oY: (y: number) => number,
+  selectedNode?: string
+) => {
+  const selectedNodes = function*(nodeId: string) {
+    yield nodeId;
+    const linked = links.filter((l: LinkType) => l.to.nodeId === nodeId).map((l) => l.from.nodeId);
+    for (var l of linked) {
+      yield* selectedNodes(l);
+    }
+  };
+  let withHighlitedLinks = [];
+  if (selectedNode) {
+    withHighlitedLinks = [...selectedNodes(selectedNode)];
+  }
+  let renderOrderedLinks = [...links];
+  renderOrderedLinks.sort(
+    (a, b) =>
+      withHighlitedLinks.includes(a.to.nodeId) > withHighlitedLinks.includes(b.to.nodeId) ? 1 : 0
+  );
+
+  return renderOrderedLinks.map((l: LinkType) => {
     let { x: startX, y: startY, inputs: startInputs, outputs: startOutputs } = nodes.find(
       (n: NodeType) => n.id === l.from.nodeId
     );
@@ -31,6 +49,8 @@ export const renderLinks = (
           x: oX(endX + endPortX),
           y: oY(endY + endPortY)
         }}
+        selected={withHighlitedLinks.includes(l.to.nodeId)}
       />
     );
   });
+};

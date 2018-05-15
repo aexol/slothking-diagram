@@ -1,7 +1,6 @@
-let styles = require('./index.css');
 import * as React from 'react';
 import * as classnames from 'classnames';
-
+import * as styles from './style'
 export type PortType = {
   id?: string;
   name: string;
@@ -13,8 +12,8 @@ export type PortType = {
   y?: number;
 };
 export type PortActions = {
-  portUp: (x: number, y: number) => void;
-  portDown: (x: number, y: number) => void;
+  portUp: (x: number, y: number, output: boolean) => void;
+  portDown: (x: number, y: number, output: boolean) => void;
   portPosition: (x: number, y: number, output: boolean) => void;
 };
 
@@ -64,11 +63,11 @@ export class Port extends React.Component<PortType & PortActions> {
             }}
             onMouseDown={(e) => {
               e.stopPropagation();
-              portDown(e.clientX, e.clientY);
+              portDown(e.clientX, e.clientY,output);
             }}
             onMouseUp={(e) => {
               e.stopPropagation();
-              portUp(e.clientX, e.clientY);
+              portUp(e.clientX, e.clientY,output);
             }}
             className={classnames({
               [styles.DependencyNodePortDot]: true,

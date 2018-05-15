@@ -1,16 +1,30 @@
 import { LinkType } from './Link';
 import { NodeType } from './Node';
-import { SpaceBarCategory } from './SpaceBarMenu';
+import { SpaceBarCategory, SpaceBarAction, Item } from './SpaceBarMenu';
 export type NodeCategory = {
   name: string;
+  type: SpaceBarAction.AddNode;
   items: Array<NodeType>;
   editable?: boolean;
 };
+export type ActionCategory = {
+  name: string;
+  type: SpaceBarAction.Action;
+  items: Array<Item>;
+};
+export type LoadedFile = {
+  nodes: Array<NodeType>;
+  links: Array<LinkType>;
+};
 
 export type GraphProps = {
-  categories?: Array<NodeCategory>;
+  categories?: Array<NodeCategory | ActionCategory>;
   actions?: Array<SpaceBarCategory>;
   serialize?: (nodes: Array<NodeType>, links: Array<LinkType>) => void;
+  load?: () => Array<NodeType>;
+  selectedNode?: string;
+  loaded?: LoadedFile;
+  onNodeSelect: (node: string) => void;
 };
 export type GraphState = {
   selected?: string;
@@ -36,7 +50,9 @@ export type GraphState = {
     endY: number;
     id: string;
     portId: string;
+    output: boolean;
   };
+  loaded?: LoadedFile;
 };
 export type GraphStatePartial = { [P in keyof GraphState]?: GraphState[P] };
 export enum Action {
@@ -59,5 +75,6 @@ export const GraphInitialState: GraphState = {
   mouseY: 0,
   action: Action.Nothing,
   activeNode: null,
-  activePort: null
+  activePort: null,
+  loaded: null
 };

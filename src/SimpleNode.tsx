@@ -1,8 +1,8 @@
-let styles = require('./SimpleNode.css');
 import * as React from 'react';
 import * as classnames from 'classnames';
 import { Port } from './Port';
 import { NodeType, NodeActions, NodeState } from './Node';
+import * as styles from './style/SimpleNode';
 export class Node extends React.Component<NodeType & NodeActions, NodeState> {
   private node;
   state = {
@@ -47,11 +47,11 @@ export class Node extends React.Component<NodeType & NodeActions, NodeState> {
       >
         {inputs.map((i) => (
           <Port
-            portUp={(x, y) => {
-              portUp(x, y, i.id, id);
+            portUp={(x, y, output) => {
+              portUp(x, y, i.id, id, output);
             }}
-            portDown={(x, y) => {
-              portDown(x, y, i.id, id);
+            portDown={(x, y, output) => {
+              portDown(x, y, i.id, id, output);
             }}
             portPosition={(x, y, output) => {
               portPosition(x, y, i.id, id, output);
@@ -66,11 +66,11 @@ export class Node extends React.Component<NodeType & NodeActions, NodeState> {
         </div>
         {outputs.map((i) => (
           <Port
-            portUp={(x, y) => {
-              portUp(x, y, i.id, id);
+            portUp={(x, y, output) => {
+              portUp(x, y, i.id, id, output);
             }}
-            portDown={(x, y) => {
-              portDown(x, y, i.id, id);
+            portDown={(x, y, output) => {
+              portDown(x, y, i.id, id, output);
             }}
             portPosition={(x, y, output) => {
               portPosition(x, y, i.id, id, output);
